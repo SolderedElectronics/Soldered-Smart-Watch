@@ -1,7 +1,8 @@
 #include "Display.h"
-#include "LSM6DS3-SOLDERED.h" // Gyroscope library
+#include "LSM6DS3-SOLDERED.h"
 #include "SolderedLogo.h"
 #include "defines.h"
+#include <WiFi.h>
 
 /**
  * @brief Initialize the OLED display
@@ -109,9 +110,8 @@ void Display::drawErrorMessage(const char *_error)
     oledDisplay->print(_error);
 
 
-    oledDisplay->print("Restart via button...");
     oledDisplay->setCursor(0, 50);
-    oledDisplay->print(_error);
+    oledDisplay->print("Restart via button...");
 
     // Show everything on the display
     oledDisplay->display();
@@ -166,7 +166,7 @@ void Display::selfDestructEnd()
     oledDisplay->display();
 }
 
-void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro)
+void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro, RBD::Button *button)
 {
     float cube[8][3] = {{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
                         {-1, -1, 1},  {1, -1, 1},  {1, 1, 1},  {-1, 1, 1}};
@@ -237,6 +237,12 @@ void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro)
         oledDisplay->display();
         // Wait 50ms so the frame rate isn't too fast
         delay(50);
+
+        // If the button is pressed, exit the function
+        if (button->onPressed())
+        {
+            return;
+        }
     }
 }
 
@@ -262,4 +268,48 @@ void Display::project(float *v, float angleX, float angleY, float angleZ, int *x
     float z = 4 / (4 + zrrr);
     *x = xrrr * z * 18 + OLED_WIDTH / 2;
     *y = yrrr * z * 18 + OLED_HEIGHT / 2;
+}
+
+void Display::wifiScanner(RBD::Button *button)
+{
+    oledDisplay->clearDisplay();
+    oledDisplay->setCursor(0, 0);
+    oledDisplay->setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+    oledDisplay->setTextSize(1);
+
+    // Scan for available WiFi networks
+    int numNetworks = WiFi.scanNetworks();
+
+    if (numNetworks == 0)
+    {
+        oledDisplay->print("No WiFi networks found.");
+        oledDisplay->display();
+    }
+    else
+    {
+        oledDisplay->print("Networks found:");
+        oledDisplay->setCursor(0, 10);
+        oledDisplay->setTextWrap(false);
+        for (int i = 0; i < numNetworks || i < 4; i++)
+        {
+            if(strlen(WiFi.SSID(i)) == 0)
+            {
+                continue;
+            }
+            oledDisplay->print(WiFi.SSID(i)); // Get SSID of the network
+            oledDisplay->display();
+            oledDisplay->setCursor(0, 10 + 10 * i);
+            Serial.println(WiFi.SSID(i));
+            delay(75);
+        }
+        oledDisplay->setTextWrap(true);
+    }
+    while (true)
+    {
+        // If the button is pressed, exit the function
+        if (button->onPressed())
+        {
+            return;
+        }
+    }
 }

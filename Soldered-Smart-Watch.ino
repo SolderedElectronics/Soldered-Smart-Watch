@@ -252,12 +252,12 @@ void menu()
         {
             if (menuPage == 0)
             {
-                // wifiScan();
+                display.wifiScanner(&button);
                 return;
             }
             else if (menuPage == 1)
             {
-                display.gyroAnimation(&gyro);
+                display.gyroAnimation(&gyro, &button);
                 return;
             }
             else if (menuPage == 2)
