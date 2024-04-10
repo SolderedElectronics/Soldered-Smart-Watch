@@ -1,32 +1,27 @@
-// Include external files
-#include "Display.h"
-#include "Network.h" // Network functions
-#include "defines.h" // Global defines
-#include "images.h"
-
-// Include the required libraries
-#include "LSM6DS3-SOLDERED.h" // For the LSM6DS3
+// Include external files and libraries
+#include "LSM6DS3-SOLDERED.h" // Gyroscope library
+#include "src/Display.h"      // Display driver
+#include "src/Network.h"      // Network functions
+#include "src/SolderedLogo.h" // The Soldered Logo, for the loading screen
+#include "src/WSLED.h"        // Onboard RGB LED
+#include "src/defines.h"      // Global defines and configurations
 #include "time.h"             // For storing time data
+#include <RBD_Button.h>       // Button driver
+#include <RBD_Timer.h>        //  Required for button driver
 
-// Objects which run the different features of the device
-Network network;
-Display display;
-Soldered_LSM6DS3 gyro;
-
-// Replace these with your WiFi network settings
-const char *ssid = "Soldered";
-const char *password = "dasduino";
-
-// NTP server to use for time synchronization
-const char *ntpServer = "pool.ntp.org";
-
-// Timezone setting for Zagreb, Croatia
-// For a list of possible time zones, check zones.csv
-const char *timeZone = "CET-1CEST,M3.5.0,M10.5.0/3";
-
-// To remember the time when the RTC was last synchronized
+// Let's declare objects which run the different features of the device
+Network network;                // Network functions
+Display display;                // OLED display
+Soldered_LSM6DS3 gyro;          // Gyroscope
+Wsled led;                      // RGB LED
+RBD::Button button(BUTTON_PIN); // Button
+// Local variable to remember the time when the RTC was last synchronized
 time_t lastSyncAttemptTime;
 
+// To check if the button was pressed
+volatile bool buttonPressed = false;
+
+// Setup code, runs only once at startup
 void setup()
 {
     // Enable Serial communication if DEBUG is enabled
@@ -36,60 +31,64 @@ void setup()
     // Print hello message to debug serial
     DEBUG_PRINT("Welcome to Soldered Smart Watch!");
 
-    // Let's initialize the OLED display
+    // Let's try to initialize the OLED display
+    DEBUG_PRINT("Initializing OLED display...");
     if (!display.begin())
     {
         errorHandling("Couldn't initialize OLED display!");
     }
     DEBUG_PRINT("OLED display initialized!");
 
+    // Let's try to initialize the OLED display
+    DEBUG_PRINT("Initializing WSLED...");
+    led.begin();
+    DEBUG_PRINT("WSLED initialized!");
+
+
     // Let's initialize the gyroscope
-    display.showLoadingMessage(OLED_GYRO_INIT_MSG);
     DEBUG_PRINT("Initializing gyroscope...");
-    delay(1000); // So that the user can read the message
+    display.showLoadingMessage(OLED_GYRO_INIT_MSG); // Show a message on the OLED also
     if (gyro.beginCore() != 0)
     {
-        // Couldn't connect!
-        // Display here as well
-        errorHandling("Can't init gyro!");
+        // Couldn't init gyro!
+        errorHandling(OLED_GYRO_INIT_ERROR_MSG);
     }
-    configGyro(); // Also configure it!
+    // Now that the gyro is init'ed, also configure it!
+    configGyro();
 
     // Let's attempt to connect to WiFi
-    display.showLoadingMessage(OLED_WIFI_CONNECTING_MSG);
     DEBUG_PRINT("Connecting to WiFi...");
-    delay(1000); // So that the user can read the message
+    display.showLoadingMessage(OLED_WIFI_CONNECTING_MSG); // Show a message on the OLED also
     if (!network.connect(ssid, password, WIFI_CONNECT_TIMEOUT_SEC))
     {
         // Couldn't connect!
-        // Display here as well
-        errorHandling("Can't connect to WiFi!");
+        errorHandling(OLED_WIFI_CONNECTING_ERROR_MSG);
     }
     DEBUG_PRINT("Connected to WiFi!");
 
     // Also, get the time and save it to RTC
-    display.showLoadingMessage(OLED_GETTING_TIME_MSG);
+    DEBUG_PRINT("Getting time...");
+    display.showLoadingMessage(OLED_GETTING_TIME_MSG); // Show a message on the OLED also
     if (!network.getTimeAndSaveToRTC(ntpServer, timeZone, RTC_CONFIG_TIMEOUT_SEC))
     {
-        // Display the error also, then restart?
-        errorHandling("Couldn't save time to RTC!");
+        // Couldn't get time from NTP server
+        errorHandling(OLED_GETTING_TIME_ERROR_MSG);
     }
     DEBUG_PRINT("Got time and saved to RTC!");
-    delay(1500); // Add a short delay here so the user can read the message
 
     // Save the last sync attempt time
     lastSyncAttemptTime = time(nullptr);
 }
 
-/**
- * The main loop runs repteadly and does the following:
- *  -Checks if RTC needs to be re-synced via WiFi
- *  -Update the display with the time and number of steps
- */
+// The main loop of the program
 void loop()
 {
+    // Let's turn off the LED in case it was left on
+    led.ledOff();
+
     // First, let's check if we need to re-sync the RTC via WiFi
-    time_t currentTime = time(nullptr);
+    // Subtract the offset in seconds
+    time_t currentTime = time(nullptr) - RTC_SECONDS_OFFSET;
     long timeDifference = difftime(currentTime, lastSyncAttemptTime);
 
     // Let's get the currently measured number of steps
@@ -102,6 +101,7 @@ void loop()
     if (timeDifference >= RTC_SYNC_INTERVAL_SEC)
     {
         DEBUG_PRINT("Time to re-sync the RTC!");
+
         lastSyncAttemptTime = currentTime; // Remember the time a sync was attempted
 
         // Show the indicator on the display
@@ -113,14 +113,12 @@ void loop()
         // If we're not connected to Wi-Fi, re-connect
         if (!network.isConnected())
         {
-            // If we can connect to WiFi, re-sync the RTc
+            // If we can connect to WiFi, re-sync the RTC
             if (!network.connect(ssid, password, WIFI_CONNECT_TIMEOUT_SEC))
             {
                 // Couldn't connect!
-                // Doesn't matter
-                // TODO Counter for sync
                 DEBUG_PRINT("Couldn't connect to WiFi");
-                // Don't change the flag
+                // That's fine, we will keep RTC data
             }
             else
             {
@@ -135,24 +133,46 @@ void loop()
             wifiConnected = true;
         }
 
-        // Also, get the time and save it to RTC
-        if (!network.getTimeAndSaveToRTC(ntpServer, timeZone, RTC_CONFIG_TIMEOUT_SEC))
+        if (wifiConnected)
         {
-            // Display the error also, then restart?
-            errorHandling("Couldn't update time to RTC!");
+            // Now get the time and save it to RTC
+            network.getTimeAndSaveToRTC(ntpServer, timeZone, RTC_CONFIG_TIMEOUT_SEC);
+            DEBUG_PRINT("Updated time and saved to RTC!");
         }
-        DEBUG_PRINT("Updated time and saved to RTC!");
     }
-    delay(1500);
+
+    // Now let's wait and periodically check for the button
+    for (int i = 0; i < 500; i++)
+    {
+        // Wait 3 ms 500 times -> 1500 ms total
+        delay(3);
+        // If the flag was set in the meantime, do button action
+        if (button.onPressed())
+        {
+            // Launch menu which selects feature
+            DEBUG_PRINT("Button pressed - going to menu!");
+            menu();
+        }
+    }
 }
 
+/**
+ * @brief Print the error message on Serial and the OLED and then go to infinite loop
+ *
+ * @param error The string which describes the error
+ */
 void errorHandling(const char *error)
 {
     DEBUG_PRINT(error);
-    // Oled
+    display.drawErrorMessage(error);
+    // Go to infinite loop
     while (true)
-        ;
-    // esp_restart(); // Restart everything...
+    {
+        if (button.onPressed())
+        {
+            esp_restart();
+        }
+    }
 }
 
 /**
@@ -166,8 +186,8 @@ void configGyro()
 
     // Configure range to lower range
     dataToWrite |= LSM6DS3_ACC_GYRO_FS_XL_2g;
-    // Configure data rate to low for lower power consumption
-    dataToWrite |= LSM6DS3_ACC_GYRO_ODR_XL_13Hz;
+    // Configure data rate
+    dataToWrite |= LSM6DS3_ACC_GYRO_ODR_XL_26Hz;
     // Now, write the patched together data
     errorAccumulator += gyro.writeRegister(LSM6DS3_ACC_GYRO_CTRL1_XL, dataToWrite);
 
@@ -189,8 +209,8 @@ void configGyro()
 
 /**
  * @brief Get the number of steps as measured by the gyroscope
- * 
- * @return uint16_t 
+ *
+ * @return uint16_t
  */
 uint16_t getNumSteps()
 {
@@ -203,6 +223,69 @@ uint16_t getNumSteps()
     stepsTaken = ((uint16_t)readDataByte) << 8;
     gyro.readRegister(&readDataByte, LSM6DS3_ACC_GYRO_STEP_COUNTER_L);
     stepsTaken |= readDataByte;
+
     // Return it!
     return stepsTaken;
+}
+
+void menu()
+{
+    uint32_t timeout = millis();
+    int menuPage = 0; // Start with 0 for first press
+    display.drawMenuPage(menuPage);
+    led.showMenuColor(menuPage);
+    while (true)
+    {
+        if (button.onPressed())
+        {
+            menuPage++;
+            if (menuPage >= 4)
+            {
+                menuPage = 0;
+            }
+            display.drawMenuPage(menuPage);
+            led.showMenuColor(menuPage);
+            timeout = millis();
+        }
+
+        if (millis() - timeout > MENU_TIMEOUT_MS)
+        {
+            if (menuPage == 0)
+            {
+                // wifiScan();
+                return;
+            }
+            else if (menuPage == 1)
+            {
+                display.gyroAnimation(&gyro);
+                return;
+            }
+            else if (menuPage == 2)
+            {
+                // "Self destruct"
+                customFunction();
+                return;
+            }
+            else
+            {
+                // Go back
+                return;
+            }
+        }
+    }
+}
+
+void customFunction()
+{
+    for (int i = 3; i >= 0; i--)
+    {
+        display.selfDestructMessage(i);
+        led.redBlink();
+        led.redBlink();
+        led.redBlink();
+        led.redBlink();
+        led.redBlink();
+    }
+    display.selfDestructEnd();
+    delay(5000);
 }

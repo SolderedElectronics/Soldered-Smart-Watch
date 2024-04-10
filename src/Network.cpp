@@ -1,10 +1,23 @@
 #include "Network.h"
 #include "defines.h"
 
+/**
+ * @brief Construct a new Network:: Network object
+ * 
+ */
 Network::Network()
 {
 }
 
+/**
+ * @brief Connect to a WiFi network
+ * 
+ * @param _ssid the SSID of the network, case sensitive!
+ * @param _pass the password of the network, case sensitive!
+ * @param _timeoutSeconds the number of seconds to wait for WiFi to connect
+ * @return true if it was successful
+ * @return false if it failed
+ */
 bool Network::connect(const char *_ssid, const char *_pass, uint16_t _timeoutSeconds)
 {
     // Connect to Wi-Fi
@@ -42,6 +55,12 @@ bool Network::connect(const char *_ssid, const char *_pass, uint16_t _timeoutSec
     }
 }
 
+/**
+ * @brief Simply get if we're connected via Wifi
+ * 
+ * @return true if we're connected
+ * @return false if not
+ */
 bool Network::isConnected()
 {
     // Simply return true if we're connected, false if not
@@ -55,6 +74,15 @@ bool Network::isConnected()
     }
 }
 
+/**
+ * @brief Get time from NTP server and save it to the internal RTC
+ * 
+ * @param _ntpServer the preferred NTP server
+ * @param _timezone the given timezone, check zones.csv for a list of timezones
+ * @param _timeout number of seconds until the function times out
+ * @return true if it's sucessful
+ * @return false if it failed
+ */
 bool Network::getTimeAndSaveToRTC(const char *_ntpServer, const char *_timezone, uint16_t _timeout)
 {
     // Get time from NTP
