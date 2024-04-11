@@ -14,8 +14,8 @@
 
 // WiFi credentials
 // The smart watch will attempt to connect to this WiFi to re-sync the time
-const static char *ssid = "scifi";
-const static char *password = "eps01555";
+const static char *ssid = "Soldered";
+const static char *password = "dasduino";
 
 // NTP server to use for time synchronization
 const static char *ntpServer = "pool.ntp.org";

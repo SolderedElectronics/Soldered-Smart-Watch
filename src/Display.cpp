@@ -56,13 +56,15 @@ void Display::showLoadingMessage(const char *_message)
  * @param _currentTime The time to draw
  * @param _stepCount The number of steps to print
  */
-void Display::drawTimeAndStepCount(time_t _currentTime, uint16_t _stepCount)
+void Display::drawTimeAndStepCount(time_t _currentTime, uint32_t _stepCount)
 {
     // Transform time to local time, so we can get the hours and minutes
     struct tm *timeinfo = localtime(&_currentTime);
     // Sprintf it to a formatted string so that time always shows as two numbers
     char timeString[6]; // Buffer to hold the formatted time; HH:MM + null terminator
+    char dateString[8]; // Buffer to hold the formatted date; HH:MM + null terminator
     sprintf(timeString, "%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min);
+    sprintf(dateString, "%02d.%02d.", timeinfo->tm_mday, timeinfo->tm_mon + 1);
 
     // Let's draw everything on the display
     oledDisplay->clearDisplay();                             // Clear the display buffer
@@ -71,9 +73,14 @@ void Display::drawTimeAndStepCount(time_t _currentTime, uint16_t _stepCount)
     oledDisplay->setTextSize(4);                             // Set font size to small
     oledDisplay->print(timeString);                          // Print the time string
     oledDisplay->setTextSize(1);                             // Set font size to small
-    oledDisplay->setCursor(2, 54);                          // Set the cursor to the position for steps
-    oledDisplay->print("12.23. | Steps: ");
-    oledDisplay->print(_stepCount); // printf...
+    oledDisplay->setCursor(2, 54);                           // Set the cursor to the position for steps
+    oledDisplay->print(dateString);                          // Print the date
+    oledDisplay->print("  Steps: ");                         // Also print the number of steps
+    oledDisplay->print(_stepCount);
+
+    // Also draw two lines to separate the top from the bottom
+    oledDisplay->drawLine(0, 45, 130, 45, SSD1306_WHITE);
+    oledDisplay->drawLine(0, 47, 130, 47, SSD1306_WHITE);
 
     oledDisplay->display(); // Show everything on the display
 }
@@ -142,6 +149,7 @@ void Display::drawMenuPage(uint8_t _menuPageIndex)
     {
         oledDisplay->print(MENU_PAGE_2_TEXT);
     }
+    // Add more pages if you want!
     else
     {
         oledDisplay->print(MENU_PAGE_3_TEXT);

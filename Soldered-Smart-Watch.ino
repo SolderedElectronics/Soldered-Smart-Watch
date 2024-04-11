@@ -1,13 +1,33 @@
-// Include external files and libraries
+/**
+ **************************************************
+ *
+ * @file        Soldered-Smart-Watch.ino
+ * @brief       The main sketch file for the Soldered Smart Watch project. This sketch turns a Dasduino CONNECTPLUS with
+ *an OLED display and a gyroscope into a smart watch. Check out the whole project with details on how to build it at
+ *xyz.
+ *
+ * @note        Please check the README for library requirements to compile this sketch.
+ *
+ *              To build the project you will need:
+ *              - Dasduino CONNECTPLUS: https://solde.red/333169
+ *              - LSM6DS3 6-DOF breakout: https://solde.red/333115
+ *              - OLED I2C 0.96" display: https://solde.red/333099
+ *
+ * @authors     Robert for soldered.com
+ ***************************************************/
+
+// This file is pretty important, it's for global defines and configurations
+// If you want the watch to connect to your WiFi, you'll have to edit this file!
+#include "src/defines.h"
+
+// Include other external files and libraries
 #include "LSM6DS3-SOLDERED.h" // Gyroscope library
 #include "src/Display.h"      // Display driver
 #include "src/Network.h"      // Network functions
-#include "src/SolderedLogo.h" // The Soldered Logo, for the loading screen
-#include "src/WSLED.h"        // Onboard RGB LED
-#include "src/defines.h"      // Global defines and configurations
+#include "src/WSLED.h"        // Onboard RGB LED driver
 #include "time.h"             // For storing time data
 #include <RBD_Button.h>       // Button driver
-#include <RBD_Timer.h>        //  Required for button driver
+#include <RBD_Timer.h>        // Required for button driver
 
 // Let's declare objects which run the different features of the device
 Network network;                // Network functions
@@ -15,11 +35,15 @@ Display display;                // OLED display
 Soldered_LSM6DS3 gyro;          // Gyroscope
 Wsled led;                      // RGB LED
 RBD::Button button(BUTTON_PIN); // Button
+
 // Local variable to remember the time when the RTC was last synchronized
 time_t lastSyncAttemptTime;
 
 // To check if the button was pressed
 volatile bool buttonPressed = false;
+
+// Let's remember the day of the week, so when it changes, we know to reset the step count
+uint8_t lastRememberedWeekday = 0;
 
 // Setup code, runs only once at startup
 void setup()
@@ -66,6 +90,9 @@ void setup()
     }
     DEBUG_PRINT("Connected to WiFi!");
 
+    // Adding this delay helps to make sure we're fully connected to WiFi
+    delay(1800);
+
     // Also, get the time and save it to RTC
     DEBUG_PRINT("Getting time...");
     display.showLoadingMessage(OLED_GETTING_TIME_MSG); // Show a message on the OLED also
@@ -91,9 +118,20 @@ void loop()
     time_t currentTime = time(nullptr) - RTC_SECONDS_OFFSET;
     long timeDifference = difftime(currentTime, lastSyncAttemptTime);
 
-    // Let's get the currently measured number of steps
-    uint16_t numSteps = getNumSteps();
+    // Let's check if we need to reset the step count
+    struct tm *timeinfo = localtime(&currentTime);
+    int currentDayOfWeek = timeinfo->tm_wday;
+    if (currentDayOfWeek != lastRememberedWeekday)
+    {
+        // First, save the day of the week
+        lastRememberedWeekday = currentDayOfWeek;
 
+        // Now reset the step count
+        configGyro(); // Configuring the gyro resets the step count
+    }
+
+    // Let's get the currently measured number of steps
+    uint32_t numSteps = getNumSteps();
     // Draw the current time and step count
     display.drawTimeAndStepCount(currentTime, numSteps);
 
