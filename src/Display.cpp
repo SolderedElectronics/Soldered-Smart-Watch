@@ -70,11 +70,10 @@ void Display::drawTimeAndStepCount(time_t _currentTime, uint16_t _stepCount)
     oledDisplay->setTextColor(SSD1306_WHITE, SSD1306_BLACK); // Set the text color
     oledDisplay->setTextSize(4);                             // Set font size to small
     oledDisplay->print(timeString);                          // Print the time string
-    oledDisplay->setCursor(15, 54);                          // Set the cursor to the position for steps
     oledDisplay->setTextSize(1);                             // Set font size to small
-    // Print the steps
-    oledDisplay->print("Steps today: ");
-    oledDisplay->print(_stepCount);
+    oledDisplay->setCursor(2, 54);                          // Set the cursor to the position for steps
+    oledDisplay->print("12.23. | Steps: ");
+    oledDisplay->print(_stepCount); // printf...
 
     oledDisplay->display(); // Show everything on the display
 }
@@ -109,7 +108,7 @@ void Display::drawErrorMessage(const char *_error)
     oledDisplay->setCursor(0, 20);
     oledDisplay->print(_error);
 
-
+    // Print instructions to reset via button
     oledDisplay->setCursor(0, 50);
     oledDisplay->print("Restart via button...");
 
@@ -117,12 +116,20 @@ void Display::drawErrorMessage(const char *_error)
     oledDisplay->display();
 }
 
+/**
+ * @brief Print the page of the menu we're currently on
+ *
+ * @param _menuPageIndex The index number of the menu page
+ */
 void Display::drawMenuPage(uint8_t _menuPageIndex)
 {
     oledDisplay->clearDisplay();                             // Clear the display buffer
-    oledDisplay->setCursor(0, 34);                           // Set the cursor for printing time
+    oledDisplay->setCursor(0, 34);                           // Set the cursor for a centered print
     oledDisplay->setTextColor(SSD1306_WHITE, SSD1306_BLACK); // Set the text color accordingly
     oledDisplay->setTextSize(1);                             // Set font size to small
+
+    // Depending on the menu page print the according text
+    // Check defines.h if you want to change the text
     if (_menuPageIndex == 0)
     {
         oledDisplay->print(MENU_PAGE_0_TEXT);
@@ -139,23 +146,35 @@ void Display::drawMenuPage(uint8_t _menuPageIndex)
     {
         oledDisplay->print(MENU_PAGE_3_TEXT);
     }
+
     // Show everything on the display
     oledDisplay->display();
 }
 
+/**
+ * @brief This function prints the countdown for the self destruct message
+ *
+ * @param _secRemaining the number of seconds remaining in the countdown
+ */
 void Display::selfDestructMessage(int _secRemaining)
 {
+    // Clear the display, position the cursors correctly and print the text
     oledDisplay->clearDisplay();
     oledDisplay->setCursor(0, 34);
     oledDisplay->setTextColor(SSD1306_WHITE, SSD1306_BLACK);
     oledDisplay->setTextSize(1);
     oledDisplay->print("Self destructing in ");
     oledDisplay->print(_secRemaining);
-    oledDisplay->display();
+    oledDisplay->display(); // Show it on the display
 }
 
+/**
+ * @brief This function prints the ending of the self destruct message
+ *
+ */
 void Display::selfDestructEnd()
 {
+    // Clear the display, position the cursors correctly and print the text
     oledDisplay->clearDisplay();
     oledDisplay->setCursor(0, 20);
     oledDisplay->setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -163,11 +182,22 @@ void Display::selfDestructEnd()
     oledDisplay->print("Just kidding :)");
     oledDisplay->setCursor(0, 40);
     oledDisplay->print("Implement your custom function here!");
-    oledDisplay->display();
+    oledDisplay->display(); // Show it on the display
 }
 
+/**
+ * @brief This function animates a 3D projected cube on the display from gyroscope data
+ *
+ * @note  Borrowed from Inkplate 4TEMPERA's gyroscope example!
+ *
+ * @param _gyro Pointer to the gyroscope object
+ * @param button Pointer to the button object, so we know when to exit the function
+ */
 void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro, RBD::Button *button)
 {
+    // Variables which are used for drawing the 3D Cube
+
+    // Cube vertices
     float cube[8][3] = {{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
                         {-1, -1, 1},  {1, -1, 1},  {1, 1, 1},  {-1, 1, 1}};
     // Cube edges
@@ -177,17 +207,23 @@ void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro, RBD::Button *button)
         {0, 4}, {1, 5}, {2, 6}, {3, 7}  // Vertical edges
     };
 
+    // Variables for the angles at which the cube gets projected
     float angleX = 0;
     float angleY = 0;
     float angleZ = 0;
+
     // Also, remember the previous angles
     // This is just to calculate the average between the two in order to smooth out the movement
     float previousAngleX = 0;
     float previousAngleY = 0;
     float previousAngleZ = 0;
 
+    // This value multiplies the accelerometer readings to help project the cube in the orientation of the accelerometer
+    // If you want accelerometer movements to have more effect on the cube's retation, increase this
+    // And vice versa
     float angleModifier = 0.00008;
 
+    // Go to infinite loop which projects the cube
     while (true)
     {
         // First, clear what was previously in the frame buffer
@@ -234,9 +270,10 @@ void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro, RBD::Button *button)
             // Draw the edge
             oledDisplay->drawLine(x1, y1, x2, y2, SSD1306_WHITE);
         }
+
         oledDisplay->display();
-        // Wait 50ms so the frame rate isn't too fast
-        delay(50);
+        // Wait 30ms so the frame rate isn't too fast
+        delay(30);
 
         // If the button is pressed, exit the function
         if (button->onPressed())
@@ -246,7 +283,10 @@ void Display::gyroAnimation(Soldered_LSM6DS3 *_gyro, RBD::Button *button)
     }
 }
 
-// This function projects 3D space onto 2D with a set rotation
+/**
+ * @brief This function projects 3D space onto 2D with a set rotation
+ *
+ */
 void Display::project(float *v, float angleX, float angleY, float angleZ, int *x, int *y)
 {
     // Rotate the vertex around the X axis
@@ -270,40 +310,67 @@ void Display::project(float *v, float angleX, float angleY, float angleZ, int *x
     *y = yrrr * z * 18 + OLED_HEIGHT / 2;
 }
 
+/**
+ * @brief This function scans for wifi networks and prints the results on the display
+ *
+ * @param button pointer to the button - so we know when to exit the function
+ */
 void Display::wifiScanner(RBD::Button *button)
 {
+    // Let's set up the display for printing
     oledDisplay->clearDisplay();
     oledDisplay->setCursor(0, 0);
     oledDisplay->setTextColor(SSD1306_WHITE, SSD1306_BLACK);
     oledDisplay->setTextSize(1);
 
+    // Print text so the users knows what's going on
+    oledDisplay->print("Scanning...");
+    oledDisplay->display(); // Show it on the display
+
+    // Again, prepare the display for printing
+    oledDisplay->clearDisplay();
+    oledDisplay->setCursor(0, 0);
+
     // Scan for available WiFi networks
     int numNetworks = WiFi.scanNetworks();
-
     if (numNetworks == 0)
     {
-        oledDisplay->print("No WiFi networks found.");
+        // If there are no networks found, just notify the user
+        oledDisplay->print("No networks found");
         oledDisplay->display();
     }
     else
     {
+        // Networks have been found!
         oledDisplay->print("Networks found:");
+
+        // Let's print them
         oledDisplay->setCursor(0, 10);
+        // Disable text wrapping for this
         oledDisplay->setTextWrap(false);
-        for (int i = 0; i < numNetworks || i < 4; i++)
+
+        // Print all networks but not more than 5
+        for (int i = 0; i < numNetworks && i < 5; i++)
         {
-            if(strlen(WiFi.SSID(i)) == 0)
-            {
+            // If the WiFi name is empty, skip it!
+            if (WiFi.SSID(i).length() == 0)
                 continue;
-            }
-            oledDisplay->print(WiFi.SSID(i)); // Get SSID of the network
+
+            // Print the WiFi name (SSID)
+            oledDisplay->print(WiFi.SSID(i));
             oledDisplay->display();
-            oledDisplay->setCursor(0, 10 + 10 * i);
-            Serial.println(WiFi.SSID(i));
+
+            // Manually go to new line
+            oledDisplay->setCursor(0, 20 + 10 * i);
+
+            // Wait a bit for dramatic effect
             delay(75);
         }
+        // Turn text wrap back on
         oledDisplay->setTextWrap(true);
     }
+
+    // Now wait for user input
     while (true)
     {
         // If the button is pressed, exit the function
