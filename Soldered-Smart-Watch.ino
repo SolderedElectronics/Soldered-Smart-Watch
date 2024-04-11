@@ -45,6 +45,9 @@ volatile bool buttonPressed = false;
 // Let's remember the day of the week, so when it changes, we know to reset the step count
 uint8_t lastRememberedWeekday = 0;
 
+// Remember if low battery alert is active or not
+bool lowBattery = false;
+
 // Setup code, runs only once at startup
 void setup()
 {
@@ -67,7 +70,6 @@ void setup()
     DEBUG_PRINT("Initializing WSLED...");
     led.begin();
     DEBUG_PRINT("WSLED initialized!");
-
 
     // Let's initialize the gyroscope
     DEBUG_PRINT("Initializing gyroscope...");
@@ -105,6 +107,7 @@ void setup()
 
     // Save the last sync attempt time
     lastSyncAttemptTime = time(nullptr);
+    pinMode(BATTERY_VOLTAGE_PIN, INPUT);
 }
 
 // The main loop of the program
@@ -112,6 +115,17 @@ void loop()
 {
     // Let's turn off the LED in case it was left on
     led.ledOff();
+
+    // Let's check if low battery alert needs to be on:
+    int batteryChargeStateValue = analogRead(BATTERY_VOLTAGE_PIN); // Read the analog value from pin 33
+    if (batteryChargeStateValue <= LOW_BATTERY_ANALOG_READ)
+    {
+        lowBattery = true;
+    }
+    else
+    {
+        lowBattery = false;
+    }
 
     // First, let's check if we need to re-sync the RTC via WiFi
     // Subtract the offset in seconds
@@ -132,8 +146,9 @@ void loop()
 
     // Let's get the currently measured number of steps
     uint32_t numSteps = getNumSteps();
-    // Draw the current time and step count
-    display.drawTimeAndStepCount(currentTime, numSteps);
+
+    // Draw the current time and step count, and the low battery alert if so
+    display.drawTimeAndStepCount(currentTime, numSteps, lowBattery);
 
     // Check if it's time to re-sync the RTC
     if (timeDifference >= RTC_SYNC_INTERVAL_SEC)
@@ -206,6 +221,7 @@ void errorHandling(const char *error)
     // Go to infinite loop
     while (true)
     {
+        // Restart the ESP if the button is pressed
         if (button.onPressed())
         {
             esp_restart();
@@ -215,6 +231,8 @@ void errorHandling(const char *error)
 
 /**
  * @brief Configure the gyroscope so it works as a pedometer
+ * 
+ * @note This function also resets the number of steps counted
  *
  */
 void configGyro()
@@ -266,26 +284,43 @@ uint16_t getNumSteps()
     return stepsTaken;
 }
 
+/**
+ * @brief The menu function, this is launched when the button is pressed
+ * 
+ */
 void menu()
 {
+    // Start measuring time
     uint32_t timeout = millis();
     int menuPage = 0; // Start with 0 for first press
+    
+    // Show the menu page and color
     display.drawMenuPage(menuPage);
     led.showMenuColor(menuPage);
+
+    // Go to infinite loop
     while (true)
     {
+        // If the button is pressed, keep counting the menu pages
         if (button.onPressed())
         {
             menuPage++;
+
+            // Watch if the pages roll over.
             if (menuPage >= 4)
             {
                 menuPage = 0;
             }
+
+            // Show the current page
             display.drawMenuPage(menuPage);
             led.showMenuColor(menuPage);
+            
+            // Reset the timer
             timeout = millis();
         }
 
+        // When the timeout is over, launch  the according function
         if (millis() - timeout > MENU_TIMEOUT_MS)
         {
             if (menuPage == 0)
@@ -313,17 +348,26 @@ void menu()
     }
 }
 
+/**
+ * @brief Write your own implementation here!
+ * 
+ */
 void customFunction()
 {
+    // Count 3... 2... 1...
     for (int i = 3; i >= 0; i--)
     {
         display.selfDestructMessage(i);
+
+        // The blinks are 200ms, so 5 blinks for 1 second
         led.redBlink();
         led.redBlink();
         led.redBlink();
         led.redBlink();
         led.redBlink();
     }
+
+    // Show that self destruct is over
     display.selfDestructEnd();
-    delay(5000);
+    delay(5000); // Wait so that the user sees the message
 }

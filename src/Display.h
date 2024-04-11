@@ -20,7 +20,7 @@ class Display
     }
     bool begin();
     void showLoadingMessage(const char *_message);
-    void drawTimeAndStepCount(time_t _currentTime, uint32_t _stepCount);
+    void drawTimeAndStepCount(time_t _currentTime, uint32_t _stepCount, bool _lowBattery);
     void drawUpdatingRtcIndicator();
     void drawErrorMessage(const char *_error);
     void drawMenuPage(uint8_t _menuPageIndex);

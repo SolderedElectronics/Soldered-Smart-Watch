@@ -45,6 +45,12 @@ const static char *timeZone = "CET-1CEST,M3.5.0,M10.5.0/3";
 // Button pin
 #define BUTTON_PIN 4
 
+// Battery voltage read pin
+#define BATTERY_VOLTAGE_PIN 33
+
+// The value of the ADC reading at which the low battery alert turns on
+#define LOW_BATTERY_ANALOG_READ 2000
+
 // Fixed display messages
 // Spaces are in front because this makes them easier to print and align in the middle
 #define OLED_WIFI_CONNECTING_MSG       "Connecting to WiFi..."
