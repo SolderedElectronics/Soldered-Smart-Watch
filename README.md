@@ -2,28 +2,30 @@
 
 We can make our own weather stations, why not a smart watch? This project uses a Dasduino CONNECTPLUS, OLED Display and Gyroscope to create this wearable digital watch which also counts your daily steps.
 
+![Smartwatch, but a nicer photograph](img/smartwatch2.png)
+
 Here's a detailed tutorial on how to make one:
 
 ## Required tools
 
-If you're printing the case yourself, a 3D printer is required.
-To assemble all the components, you will also need a soldering iron.
+If you're printing the case yourself, a 3D printer is required. Use any fillament of your choice.
+To assemble all the components, you will also need a soldering iron and a M3-compatible screwdriver.
 
 ## Components and materials
 
 Here's the list of components used for this project:
 
-| **Komponenta**                   | **URL**                   |
-|----------------------------------|---------------------------|
-| Dasduino CONECTPLUS              | Solde.red/hr/333169       |
-| OLED I2C 0.96" SSD1306           | Solde.red/hr/333099       |
-| Akcelerometar i žiroskop LSM6DS3 | Solde.red/hr/333115       |
-| Tipkalo                          | Solde.red/hr/101111       |
-| Li-ion baterija 680mAh 3.7V      | Solde.red/hr/333280       |
-| 9 x Vijak M3 6mm                 | Solde.red/hr/108941       |
-| 9 x Navojni umetak M3 3mm        | Solde.red/hr/100761       |
+| **Komponenta**                   | **URL**                                          |
+|----------------------------------|--------------------------------------------------|
+| Dasduino CONECTPLUS              | [Solde.red/hr/333169](Solde.red/hr/333169)       |
+| OLED I2C 0.96" SSD1306           | [Solde.red/hr/333099](Solde.red/hr/333099)       |
+| Akcelerometar i žiroskop LSM6DS3 | [Solde.red/hr/333115](Solde.red/hr/333115)       |
+| Tipkalo                          | [Solde.red/hr/101111](Solde.red/hr/101111)       |
+| Li-ion baterija 680mAh 3.7V      | [Solde.red/hr/333280](Solde.red/hr/333280)       |
+| 9 x Vijak M3 6mm                 | [Solde.red/hr/108941](Solde.red/hr/108941)       |
+| 9 x Navojni umetak M3 3mm        | [Solde.red/hr/100761](Solde.red/hr/100761)       |
 
-You will also need a 47k Ohm and a 100k Ohm resistor and some wire.
+You will also need a 47k Ohm and a 100k Ohm resistor and some spare wire.
 
 ## Compile and upload
 
@@ -58,4 +60,3 @@ To upload the code, open Soldered-Smart-Watch.ino, connect the Dasduino to your 
 ![Assembly](img/assembly.png)
 4. Screw the sides in and the top of the case. Finally, you can attatch some type of velcro or watch straps on the side, of your choice. You're done!
 ![Smartwatch](img/smartwatch.png)
-![Smartwatch, but a nicer photograph](img/smartwatch2.png)
